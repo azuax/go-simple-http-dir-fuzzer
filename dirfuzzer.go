@@ -12,7 +12,16 @@ import (
 	"github.com/fatih/color"
 )
 
-func checkURL(baseURL string, urlChan chan string, WG *sync.WaitGroup) {
+type pageStatus struct {
+	URL    string
+	status int
+}
+
+func (p pageStatus) toString() string {
+	return fmt.Sprintf("[%d] %s\n", p.status, p.URL)
+}
+
+func checkURL(baseURL string, urlChan chan string, urlOk *[]pageStatus, WG *sync.WaitGroup) {
 	defer WG.Done()
 
 	path := <-urlChan
@@ -26,6 +35,7 @@ func checkURL(baseURL string, urlChan chan string, WG *sync.WaitGroup) {
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		*urlOk = append(*urlOk, pageStatus{fullURL, resp.StatusCode})
 		color.Green(fmt.Sprintf("[%d] %s\n", resp.StatusCode, fullURL))
 	} else {
 		color.Red(fmt.Sprintf("[%d] %s\n", resp.StatusCode, fullURL))
@@ -37,6 +47,7 @@ func main() {
 	WG := new(sync.WaitGroup)
 	params := ParseOpts(os.Args)
 	urlChan := make(chan string, params.nThreads)
+	urlOk := []pageStatus{}
 	fmt.Printf("We are going to run over %s with %d goroutines \n", params.URL, params.nThreads)
 
 	f, err := os.Open(params.wl)
@@ -48,8 +59,14 @@ func main() {
 	for scanner.Scan() {
 		urlChan <- scanner.Text()
 		WG.Add(1)
-		go checkURL(params.URL, urlChan, WG)
+		go checkURL(params.URL, urlChan, &urlOk, WG)
 	}
 
 	WG.Wait()
+
+	color.Blue("\nFound URLs: (%d)\n", len(urlOk))
+	for _, u := range urlOk {
+		fmt.Printf(u.toString())
+	}
+
 }
