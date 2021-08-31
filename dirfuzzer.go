@@ -32,6 +32,7 @@ func checkURL(baseURL string, urlChan chan string, urlOk *[]pageStatus, WG *sync
 	resp, err := http.Get(fullURL)
 	if err != nil {
 		fmt.Printf("[Error] %s\n", fullURL)
+		return
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
@@ -66,7 +67,7 @@ func main() {
 
 	color.Blue("\nFound URLs: (%d)\n", len(urlOk))
 	for _, u := range urlOk {
-		fmt.Printf(u.toString())
+		fmt.Printf("%s\n", u.toString())
 	}
 
 }
